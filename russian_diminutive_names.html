@@ -346,20 +346,31 @@
 </table>
 <script>
 (() => {
-  const tbody = document.querySelector('table tbody');
-  if (!tbody) return;
+  const table = document.querySelector('table');
+  const tbody = table?.querySelector('tbody');
+  if (!table || !tbody) return;
 
-  const collator = new Intl.Collator('ru', { usage: 'sort', sensitivity: 'variant' });
   const rows = Array.from(tbody.querySelectorAll('tr'));
+  const normalize = s => (s || '').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
 
-  const key = tr => {
-    const t = tr.cells[0]?.textContent?.trim() || '';
-    // Prende solo la parte in cirillico prima della parentesi
-    return t.split(' (')[0].trim();
-  };
+  // deduplica per testo della prima colonna (esatto)
+  const seen = new Set();
+  const unique = [];
+  for (const tr of rows) {
+    const k = normalize(tr.cells[0]?.textContent || '');
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    unique.push(tr);
+  }
 
-  rows.sort((a, b) => collator.compare(key(a), key(b)));
-  rows.forEach(tr => tbody.appendChild(tr));
+  // ordina per parte cirillica prima della parentesi
+  const collator = new Intl.Collator('ru', { usage: 'sort', sensitivity: 'variant' });
+  const sortKey = tr => normalize((tr.cells[0]?.textContent || '').split(' (')[0]);
+  unique.sort((a, b) => collator.compare(sortKey(a), sortKey(b)));
+
+  // rimpiazza il contenuto della tabella
+  tbody.innerHTML = '';
+  unique.forEach(tr => tbody.appendChild(tr));
 })();
 </script>
 </html>
